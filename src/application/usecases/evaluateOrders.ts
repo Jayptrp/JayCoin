@@ -1,11 +1,12 @@
 import type { Trade, UserId } from "../../domain/entities";
-import type { OrderRepository, WalletRepository } from "../ports";
+import type { Clock, OrderRepository, WalletRepository } from "../ports";
 import { SellJayCoin } from "./sell";
 
 interface Deps {
   wallets: WalletRepository;
   orders: OrderRepository;
   sell: SellJayCoin;
+  clock: Clock;
 }
 
 export interface EvaluateInput {
@@ -21,6 +22,9 @@ export class EvaluateOrders {
     if (wallet.coins <= 0) return null;
 
     const orders = this.deps.orders.get(userId);
+    if (orders.stopLoss == null && orders.takeProfit == null) return null;
+
+    const now = this.deps.clock.now();
 
     if (orders.takeProfit != null && price >= orders.takeProfit) {
       return this.deps.sell.execute({
@@ -40,6 +44,7 @@ export class EvaluateOrders {
       });
     }
 
+    this.deps.orders.save({ ...orders, lastEvaluatedAt: now });
     return null;
   }
 }

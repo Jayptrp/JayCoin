@@ -1,10 +1,11 @@
 import type { OpenOrders, UserId } from "../../domain/entities";
 import { InvalidOrderError } from "../../domain/errors";
-import type { OrderRepository, WalletRepository } from "../ports";
+import type { Clock, OrderRepository, WalletRepository } from "../ports";
 
 interface Deps {
   wallets: WalletRepository;
   orders: OrderRepository;
+  clock: Clock;
 }
 
 export interface SetOrdersInput {
@@ -39,7 +40,13 @@ export class SetOrders {
       );
     }
 
-    const next: OpenOrders = { userId, stopLoss, takeProfit };
+    const noOrders = stopLoss == null && takeProfit == null;
+    const next: OpenOrders = {
+      userId,
+      stopLoss,
+      takeProfit,
+      lastEvaluatedAt: noOrders ? null : this.deps.clock.now(),
+    };
     this.deps.orders.save(next);
     return next;
   }

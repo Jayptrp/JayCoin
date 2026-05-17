@@ -37,10 +37,11 @@ export function useSession() {
 
   useEffect(() => {
     const existingId = container.users.getCurrentUserId();
-    if (existingId) {
-      const user = container.users.findById(existingId);
-      if (user) refresh(user);
-    }
+    if (!existingId) return;
+    const user = container.users.findById(existingId);
+    if (!user) return;
+    container.catchUpOrders.execute({ userId: user.id });
+    refresh(user);
   }, [container, refresh]);
 
   const signIn = useCallback(

@@ -38,10 +38,18 @@ export type PriceListener = (point: PricePoint) => void;
 
 export interface PriceFeed {
   current(): PricePoint;
-  history(): readonly PricePoint[];
   subscribe(listener: PriceListener): () => void;
   start(): void;
   stop(): void;
+}
+
+export interface PriceOracle {
+  priceAt(timestampMs: number): number;
+  sampleRange(
+    fromMs: number,
+    toMs: number,
+    points: number,
+  ): PricePoint[];
 }
 
 export interface Clock {

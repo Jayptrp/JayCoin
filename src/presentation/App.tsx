@@ -1,18 +1,21 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
+import { findTimeframe, type TimeframeId } from "../domain/timeframes";
 import { AuthSplash } from "./components/AuthSplash";
 import { Header } from "./components/Header";
 import { HistoryPanel } from "./components/HistoryPanel";
 import { PositionPanel } from "./components/PositionPanel";
 import { PriceChart } from "./components/PriceChart";
 import { PriceTicker } from "./components/PriceTicker";
+import { TimeframePicker } from "./components/TimeframePicker";
 import { TradeForm } from "./components/TradeForm";
 import { useOrderEvaluation } from "./hooks/useOrderEvaluation";
-import { usePrice } from "./hooks/usePrice";
+import { usePriceData } from "./hooks/usePriceData";
 import { useSession } from "./hooks/useSession";
 
 export function App() {
   const { user, wallet, orders, trades, signIn, reload } = useSession();
-  const { current, history } = usePrice();
+  const [timeframe, setTimeframe] = useState<TimeframeId>("5m");
+  const { current, points } = usePriceData(timeframe);
 
   const handleTriggered = useCallback(() => reload(), [reload]);
   useOrderEvaluation(user, current.price, handleTriggered);
@@ -26,7 +29,8 @@ export function App() {
       <Header user={user} wallet={wallet} price={current.price} />
       <main className="flex flex-col gap-3 p-4 pb-10">
         <PriceTicker price={current.price} />
-        <PriceChart history={history} />
+        <TimeframePicker selected={timeframe} onChange={setTimeframe} />
+        <PriceChart points={points} label={findTimeframe(timeframe).label} />
         <TradeForm
           user={user}
           wallet={wallet}
@@ -42,7 +46,7 @@ export function App() {
         />
         <HistoryPanel trades={trades} />
         <footer className="pt-2 text-center text-[10px] text-slate-600">
-          JayBile · simulated market · localStorage only
+          JayBile · deterministic JayCoin market · localStorage only
         </footer>
       </main>
     </div>

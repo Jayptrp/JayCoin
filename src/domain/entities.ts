@@ -17,6 +17,7 @@ export interface OpenOrders {
   readonly userId: UserId;
   readonly stopLoss: number | null;
   readonly takeProfit: number | null;
+  readonly lastEvaluatedAt: number | null;
 }
 
 export type TradeSide = "BUY" | "SELL";
@@ -45,5 +46,10 @@ export function emptyWallet(userId: UserId): Wallet {
 }
 
 export function emptyOrders(userId: UserId): OpenOrders {
-  return { userId, stopLoss: null, takeProfit: null };
+  return {
+    userId,
+    stopLoss: null,
+    takeProfit: null,
+    lastEvaluatedAt: null,
+  };
 }

@@ -3,13 +3,15 @@ import type {
   Clock,
   IdGenerator,
   OrderRepository,
+  PriceOracle,
+  PricePoint,
   TradeRepository,
   WalletRepository,
 } from "../ports";
 import type { OpenOrders, Trade, Wallet } from "../../domain/entities";
 import { emptyOrders, emptyWallet } from "../../domain/entities";
 import { SellJayCoin } from "./sell";
-import { EvaluateOrders } from "./evaluateOrders";
+import { CatchUpOrders } from "./catchUpOrders";
 
 class InMemoryWallets implements WalletRepository {
   store = new Map<string, Wallet>();
@@ -41,73 +43,101 @@ class InMemoryTrades implements TradeRepository {
   }
 }
 
-const fixedClock: Clock = { now: () => 1_000 };
+class StubOracle implements PriceOracle {
+  constructor(private readonly fn: (ts: number) => number) {}
+  priceAt(ts: number): number {
+    return this.fn(ts);
+  }
+  sampleRange(): PricePoint[] {
+    return [];
+  }
+}
+
+const clockAt = (now: number): Clock => ({ now: () => now });
 const sequentialIds: IdGenerator = (() => {
   let counter = 0;
   return { next: () => `id-${++counter}` };
 })();
 
-describe("EvaluateOrders", () => {
+describe("CatchUpOrders", () => {
   let wallets: InMemoryWallets;
   let orders: InMemoryOrders;
   let trades: InMemoryTrades;
-  let evaluator: EvaluateOrders;
 
   beforeEach(() => {
     wallets = new InMemoryWallets();
     orders = new InMemoryOrders();
     trades = new InMemoryTrades();
+  });
+
+  function build(oracle: PriceOracle, now: number) {
+    const clock = clockAt(now);
     const sell = new SellJayCoin({
       wallets,
       orders,
       trades,
-      clock: fixedClock,
+      clock,
       ids: sequentialIds,
     });
-    evaluator = new EvaluateOrders({ wallets, orders, sell, clock: fixedClock });
+    return new CatchUpOrders({
+      wallets,
+      orders,
+      oracle,
+      sell,
+      clock,
+    });
+  }
+
+  it("returns null when there is no open position", () => {
+    const useCase = build(new StubOracle(() => 50), 10_000);
+    expect(useCase.execute({ userId: "u1" })).toBeNull();
   });
 
-  it("returns null when user has no coins", () => {
-    expect(evaluator.execute({ userId: "u1", price: 100 })).toBeNull();
-  });
-
-  it("triggers take-profit when price >= TP", () => {
+  it("triggers stop-loss at the historical bucket", () => {
     wallets.save({ userId: "u1", cash: 0, coins: 5, avgEntryPrice: 50 });
     orders.save({
       userId: "u1",
       stopLoss: 40,
       takeProfit: 80,
-      lastEvaluatedAt: 0,
+      lastEvaluatedAt: 1_000,
     });
-    const trade = evaluator.execute({ userId: "u1", price: 85 });
-    expect(trade?.reason).toBe("TAKE_PROFIT");
-    expect(wallets.get("u1").coins).toBe(0);
-    expect(wallets.get("u1").cash).toBe(425);
-  });
-
-  it("triggers stop-loss when price <= SL", () => {
-    wallets.save({ userId: "u1", cash: 0, coins: 5, avgEntryPrice: 50 });
-    orders.save({
-      userId: "u1",
-      stopLoss: 40,
-      takeProfit: 80,
-      lastEvaluatedAt: 0,
-    });
-    const trade = evaluator.execute({ userId: "u1", price: 35 });
+    const useCase = build(
+      new StubOracle((t) => (t < 1_000 + 3 * 60_000 ? 60 : 30)),
+      1_000 + 10 * 60_000,
+    );
+    const trade = useCase.execute({ userId: "u1" });
     expect(trade?.reason).toBe("STOP_LOSS");
+    expect(trade?.timestamp).toBeLessThanOrEqual(1_000 + 10 * 60_000);
     expect(wallets.get("u1").coins).toBe(0);
   });
 
-  it("advances lastEvaluatedAt when the band is not crossed", () => {
+  it("triggers take-profit when price crossed up while away", () => {
     wallets.save({ userId: "u1", cash: 0, coins: 5, avgEntryPrice: 50 });
     orders.save({
       userId: "u1",
       stopLoss: 40,
       takeProfit: 80,
-      lastEvaluatedAt: 0,
+      lastEvaluatedAt: 1_000,
     });
-    expect(evaluator.execute({ userId: "u1", price: 60 })).toBeNull();
-    expect(wallets.get("u1").coins).toBe(5);
-    expect(orders.get("u1").lastEvaluatedAt).toBe(1_000);
+    const useCase = build(
+      new StubOracle((t) => (t < 1_000 + 2 * 60_000 ? 70 : 95)),
+      1_000 + 5 * 60_000,
+    );
+    const trade = useCase.execute({ userId: "u1" });
+    expect(trade?.reason).toBe("TAKE_PROFIT");
+  });
+
+  it("advances lastEvaluatedAt when nothing triggered", () => {
+    wallets.save({ userId: "u1", cash: 0, coins: 5, avgEntryPrice: 50 });
+    orders.save({
+      userId: "u1",
+      stopLoss: 40,
+      takeProfit: 80,
+      lastEvaluatedAt: 1_000,
+    });
+    const now = 1_000 + 5 * 60_000;
+    const useCase = build(new StubOracle(() => 60), now);
+    expect(useCase.execute({ userId: "u1" })).toBeNull();
+    expect(orders.get("u1").lastEvaluatedAt).toBe(now);
   });
 });

@@ -25,12 +25,19 @@ export interface SellInput {
   coinAmount: number;
   price: number;
   reason?: TradeReason;
+  executedAt?: number;
 }
 
 export class SellJayCoin {
   constructor(private readonly deps: Deps) {}
 
-  execute({ userId, coinAmount, price, reason = "MANUAL" }: SellInput): Trade {
+  execute({
+    userId,
+    coinAmount,
+    price,
+    reason = "MANUAL",
+    executedAt,
+  }: SellInput): Trade {
     if (coinAmount <= 0 || price <= 0) throw new InvalidAmountError();
 
     const wallet = this.deps.wallets.get(userId);
@@ -41,7 +48,12 @@ export class SellJayCoin {
     this.deps.wallets.save(updated);
 
     if (updated.coins === 0) {
-      this.deps.orders.save({ userId, stopLoss: null, takeProfit: null });
+      this.deps.orders.save({
+        userId,
+        stopLoss: null,
+        takeProfit: null,
+        lastEvaluatedAt: null,
+      });
     }
 
     const trade: Trade = {
@@ -52,7 +64,7 @@ export class SellJayCoin {
       price,
       coins: safeAmount,
       cashDelta: safeAmount * price,
-      timestamp: this.deps.clock.now(),
+      timestamp: executedAt ?? this.deps.clock.now(),
     };
     this.deps.trades.append(trade);
     return trade;
