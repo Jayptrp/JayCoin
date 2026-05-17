@@ -15,7 +15,6 @@ Mobile web app simulating a JayCoin (JAY) crypto market. Auto-authenticates a us
 
 ## Repository
 - GitHub: `Jayptrp/JayCoin`. Local default branch is `main`.
-- Active feature branch for this session: `claude/new-session-41rEH`.
 - Live site: `https://jayptrp.github.io/JayCoin/`.
 
 ## Architecture — clean / hexagonal
@@ -92,12 +91,12 @@ src/
 - Tailwind utility classes; no CSS-in-JS.
 - Test files colocated with source (`foo.test.ts` next to `foo.ts`).
 
-## Git workflow for this session
-- Develop on branch `claude/new-session-41rEH`.
+## Git workflow
+- **Default branch:** edit directly on `main`. Jay explicitly opted in to this — no per-task feature branch.
 - Commit with clear messages. Don't amend; create new commits when fixes are needed.
-- Push with `git push -u origin <branch-name>`; retry network failures with exponential backoff (2s, 4s, 8s, 16s).
-- Do NOT push to `main` without explicit user permission (the only exception so far was applying the pre-made HANDOFF commits that the user asked to land directly on main).
+- Push with `git push -u origin main`; retry network failures with exponential backoff (2s, 4s, 8s, 16s).
 - Do NOT open a pull request unless the user explicitly asks.
+- Use the GitHub MCP tools (`mcp__github__*`) for any GitHub interaction — there is no `gh` CLI in this environment.
 
 ## Confirmed user preferences
 - Wants a **Close Position** action in the position panel (not just via the trade form). The MVP added a "Close Position" button that sells the full holding at the current price.
