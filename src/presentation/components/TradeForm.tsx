@@ -88,7 +88,7 @@ export function TradeForm({ user, wallet, price, onTraded }: Props) {
               const base = mode === "BUY" ? wallet.cash : wallet.coins;
               setAmount(round(base * fraction, mode === "BUY" ? 2 : 6));
             }}
-            className="flex-1 rounded-lg border border-jay-border bg-jay-bg py-2 text-xs text-slate-300 active:opacity-80"
+            className="flex-1 rounded-lg border border-jay-border bg-jay-bg py-2 text-xs text-slate-300 hover:border-jay-accent active:opacity-80"
           >
             {fraction * 100}%
           </button>
@@ -115,10 +115,10 @@ export function TradeForm({ user, wallet, price, onTraded }: Props) {
         type="button"
         disabled={!hasInput}
         onClick={submit}
-        className={`mt-4 w-full rounded-lg px-4 py-3 text-base font-semibold disabled:opacity-40 ${
+        className={`mt-4 w-full rounded-lg px-4 py-3 text-base font-semibold transition disabled:opacity-40 ${
           mode === "BUY"
-            ? "bg-jay-up text-slate-900"
-            : "bg-jay-down text-white"
+            ? "bg-jay-up text-slate-900 hover:brightness-110"
+            : "bg-jay-down text-white hover:brightness-110"
         }`}
       >
         {mode === "BUY" ? "Buy JayCoin" : "Sell JayCoin"}

@@ -24,7 +24,7 @@ export function TimeframePicker({ selected, onChange }: Props) {
             className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-semibold transition ${
               active
                 ? "bg-jay-accent text-jay-bg"
-                : "text-slate-400 active:bg-jay-bg"
+                : "text-slate-400 hover:bg-jay-bg hover:text-slate-200 active:bg-jay-bg"
             }`}
           >
             {tf.label}

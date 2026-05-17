@@ -31,7 +31,7 @@ export function AuthSplash({ onSignIn }: Props) {
         <button
           type="button"
           onClick={() => onSignIn(nickname)}
-          className="mt-4 w-full rounded-lg bg-jay-accent px-4 py-3 text-base font-semibold text-jay-bg active:opacity-80"
+          className="mt-4 w-full rounded-lg bg-jay-accent px-4 py-3 text-base font-semibold text-jay-bg transition hover:brightness-110 active:opacity-80"
         >
           Enter market
         </button>

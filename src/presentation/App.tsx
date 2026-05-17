@@ -25,27 +25,39 @@ export function App() {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col">
+    <div className="mx-auto flex min-h-dvh max-w-6xl flex-col">
       <Header user={user} wallet={wallet} price={current.price} />
-      <main className="flex flex-col gap-3 p-4 pb-10">
-        <PriceTicker price={current.price} />
-        <TimeframePicker selected={timeframe} onChange={setTimeframe} />
-        <PriceChart points={points} label={findTimeframe(timeframe).label} />
-        <TradeForm
-          user={user}
-          wallet={wallet}
-          price={current.price}
-          onTraded={reload}
-        />
-        <PositionPanel
-          user={user}
-          wallet={wallet}
-          orders={orders}
-          price={current.price}
-          onUpdated={reload}
-        />
-        <HistoryPanel trades={trades} />
-        <footer className="pt-2 text-center text-[10px] text-slate-600">
+      <main className="grid gap-3 p-4 pb-10 lg:grid-cols-3 lg:gap-4 lg:p-6">
+        <section className="flex min-w-0 flex-col gap-3 lg:col-span-2 lg:gap-4">
+          <PriceTicker price={current.price} />
+          <TimeframePicker selected={timeframe} onChange={setTimeframe} />
+          <PriceChart points={points} label={findTimeframe(timeframe).label} />
+          <div className="hidden lg:block">
+            <HistoryPanel trades={trades} />
+          </div>
+        </section>
+
+        <aside className="flex flex-col gap-3 lg:gap-4">
+          <TradeForm
+            user={user}
+            wallet={wallet}
+            price={current.price}
+            onTraded={reload}
+          />
+          <PositionPanel
+            user={user}
+            wallet={wallet}
+            orders={orders}
+            price={current.price}
+            onUpdated={reload}
+          />
+        </aside>
+
+        <div className="lg:hidden">
+          <HistoryPanel trades={trades} />
+        </div>
+
+        <footer className="pt-2 text-center text-[10px] text-slate-600 lg:col-span-3">
           JayBile · deterministic JayCoin market · localStorage only
         </footer>
       </main>

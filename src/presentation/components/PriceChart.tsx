@@ -56,7 +56,7 @@ export function PriceChart({ points, label }: Props) {
 
   if (points.length < 2) {
     return (
-      <div className="flex h-32 items-center justify-center rounded-xl border border-jay-border bg-jay-panel text-sm text-slate-500">
+      <div className="flex h-32 items-center justify-center rounded-xl border border-jay-border bg-jay-panel text-sm text-slate-500 lg:h-80">
         No data in this window.
       </div>
     );
@@ -105,7 +105,7 @@ export function PriceChart({ points, label }: Props) {
         ref={svgRef}
         viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
         preserveAspectRatio="none"
-        className="h-32 w-full touch-none"
+        className="h-32 w-full touch-none lg:h-80"
         role="img"
         aria-label="JayCoin price chart"
         onPointerMove={handleMove}

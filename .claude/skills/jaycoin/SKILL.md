@@ -76,6 +76,15 @@ src/
 - 150 sample points per window, downsampled via `PriceOracle.sampleRange`.
 - Timeframes: `1m`, `5m`, `15m`, `1h`, `1d`, `ALL`.
 - SVG line chart in `PriceChart.tsx`; viewport 320×120, scales with width.
+- Height: `h-32` on mobile, `lg:h-80` on desktop.
+
+## Responsive layout
+- Single column on mobile (default) inside `max-w-6xl mx-auto`.
+- At `lg` (1024px+): two-column grid via `App.tsx`.
+  - Left (2/3): PriceTicker, TimeframePicker, PriceChart, HistoryPanel.
+  - Right (1/3, `aside`): TradeForm, PositionPanel.
+  - HistoryPanel renders twice — `hidden lg:block` in the left column, `lg:hidden` for mobile flow. (Only one is visible at any breakpoint; same data.)
+- Buttons should have both `hover:` (desktop) and `active:` (touch) styles. Use `hover:brightness-110` for solid accent buttons.
 
 ## Commands
 - `npm install` — install deps.
