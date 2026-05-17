@@ -1,10 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { findTimeframe, type TimeframeId } from "../domain/timeframes";
 import { AuthSplash } from "./components/AuthSplash";
 import { Header } from "./components/Header";
 import { HistoryPanel } from "./components/HistoryPanel";
 import { PositionPanel } from "./components/PositionPanel";
-import { PriceChart } from "./components/PriceChart";
+import { PriceChart, type ChartPosition } from "./components/PriceChart";
 import { PriceTicker } from "./components/PriceTicker";
 import { TimeframePicker } from "./components/TimeframePicker";
 import { TradeForm } from "./components/TradeForm";
@@ -20,6 +20,15 @@ export function App() {
   const handleTriggered = useCallback(() => reload(), [reload]);
   useOrderEvaluation(user, current.price, handleTriggered);
 
+  const chartPosition = useMemo<ChartPosition | null>(() => {
+    if (!wallet || wallet.coins <= 0) return null;
+    return {
+      entryPrice: wallet.avgEntryPrice,
+      stopLoss: orders?.stopLoss ?? null,
+      takeProfit: orders?.takeProfit ?? null,
+    };
+  }, [wallet, orders]);
+
   if (!user || !wallet || !orders) {
     return <AuthSplash onSignIn={signIn} />;
   }
@@ -31,7 +40,11 @@ export function App() {
         <section className="flex min-w-0 flex-col gap-3 lg:col-span-2 lg:gap-4">
           <PriceTicker price={current.price} />
           <TimeframePicker selected={timeframe} onChange={setTimeframe} />
-          <PriceChart points={points} label={findTimeframe(timeframe).label} />
+          <PriceChart
+            points={points}
+            label={findTimeframe(timeframe).label}
+            position={chartPosition}
+          />
           <div className="hidden lg:block">
             <HistoryPanel trades={trades} />
           </div>

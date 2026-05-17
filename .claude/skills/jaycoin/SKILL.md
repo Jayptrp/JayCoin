@@ -77,6 +77,8 @@ src/
 - Timeframes: `1m`, `5m`, `15m`, `1h`, `1d`, `ALL`.
 - SVG line chart in `PriceChart.tsx`; viewport 320×120, scales with width.
 - Height: `h-32` on mobile, `lg:h-80` on desktop.
+- **Baseline overlay** (TradingView-style) when a position is open: optional `position` prop carrying entry / SL / TP. The price line splits at the entry baseline — segments above render green, below render red. Horizontal dashed lines mark entry (yellow), SL (red), TP (green) with right-edge pill labels. Y range pads ~5% and includes all levels so they never clip.
+- Hover crosshair is a vertical dashed line only (no dot — would distort under `preserveAspectRatio="none"`).
 
 ## Responsive layout
 - Single column on mobile (default) inside `max-w-6xl mx-auto`.

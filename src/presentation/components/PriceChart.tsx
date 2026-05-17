@@ -2,59 +2,90 @@ import { useMemo, useRef, useState } from "react";
 import type { PricePoint } from "../../application/ports";
 import { formatPercent, formatPrice } from "../format";
 
+export interface ChartPosition {
+  entryPrice: number;
+  stopLoss: number | null;
+  takeProfit: number | null;
+}
+
 interface Props {
   points: PricePoint[];
   label: string;
+  position?: ChartPosition | null;
 }
 
 const VIEW_WIDTH = 320;
 const VIEW_HEIGHT = 120;
+const COLOR_UP = "#22c55e";
+const COLOR_DOWN = "#ef4444";
+const COLOR_ENTRY = "#facc15";
 
-export function PriceChart({ points, label }: Props) {
+type Coord = { x: number; y: number };
+
+export function PriceChart({ points, label, position = null }: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
-  const { path, min, max, change, fromLabel, toLabel, coords } = useMemo(() => {
-    if (points.length < 2) {
-      return {
-        path: "",
-        min: 0,
-        max: 0,
-        change: 0,
-        fromLabel: "",
-        toLabel: "",
-        coords: [] as { x: number; y: number }[],
-      };
-    }
+  const data = useMemo(() => {
+    if (points.length < 2) return null;
+
     const prices = points.map((p) => p.price);
-    const minVal = Math.min(...prices);
-    const maxVal = Math.max(...prices);
+    const levels: number[] = [];
+    if (position) {
+      levels.push(position.entryPrice);
+      if (position.stopLoss != null) levels.push(position.stopLoss);
+      if (position.takeProfit != null) levels.push(position.takeProfit);
+    }
+    const allValues = [...prices, ...levels];
+    const dataMin = Math.min(...allValues);
+    const dataMax = Math.max(...allValues);
+    const pad = Math.max((dataMax - dataMin) * 0.05, 1e-3);
+    const minVal = dataMin - pad;
+    const maxVal = dataMax + pad;
     const range = Math.max(maxVal - minVal, 1e-6);
     const stepX = VIEW_WIDTH / (points.length - 1);
 
-    const pts = points.map((p, index) => ({
-      x: index * stepX,
-      y: VIEW_HEIGHT - ((p.price - minVal) / range) * VIEW_HEIGHT,
-    }));
+    const priceToY = (price: number) =>
+      VIEW_HEIGHT - ((price - minVal) / range) * VIEW_HEIGHT;
 
-    const d = pts
-      .map((pt, i) => `${i === 0 ? "M" : "L"}${pt.x.toFixed(1)},${pt.y.toFixed(1)}`)
-      .join(" ");
+    const coords: Coord[] = points.map((p, i) => ({
+      x: i * stepX,
+      y: priceToY(p.price),
+    }));
 
     const first = points[0]!.price;
     const last = points[points.length - 1]!.price;
+    const change = (last - first) / first;
+
+    let abovePath = "";
+    let belowPath = "";
+    if (position) {
+      const baselineY = priceToY(position.entryPrice);
+      const { above, below } = splitOnBaseline(coords, baselineY);
+      abovePath = segmentsToPath(above);
+      belowPath = segmentsToPath(below);
+    }
+
+    const overallPath = coords
+      .map((c, i) => `${i === 0 ? "M" : "L"}${c.x.toFixed(1)},${c.y.toFixed(1)}`)
+      .join(" ");
+
     return {
-      path: d,
-      min: minVal,
-      max: maxVal,
-      change: (last - first) / first,
+      coords,
+      overallPath,
+      abovePath,
+      belowPath,
+      min: dataMin,
+      max: dataMax,
+      change,
+      priceToY,
       fromLabel: formatEdgeTime(points[0]!.timestamp),
       toLabel: formatEdgeTime(points[points.length - 1]!.timestamp),
-      coords: pts,
+      lastPrice: last,
     };
-  }, [points]);
+  }, [points, position]);
 
-  if (points.length < 2) {
+  if (!data) {
     return (
       <div className="flex h-32 items-center justify-center rounded-xl border border-jay-border bg-jay-panel text-sm text-slate-500 lg:h-80">
         No data in this window.
@@ -62,8 +93,10 @@ export function PriceChart({ points, label }: Props) {
     );
   }
 
-  const positive = change >= 0;
-  const stroke = positive ? "#22c55e" : "#ef4444";
+  const positive = position
+    ? data.lastPrice >= position.entryPrice
+    : data.change >= 0;
+  const fallbackStroke = positive ? COLOR_UP : COLOR_DOWN;
 
   function handleMove(event: React.PointerEvent<SVGSVGElement>) {
     const svg = svgRef.current;
@@ -79,7 +112,33 @@ export function PriceChart({ points, label }: Props) {
   }
 
   const hoverPoint = hoverIndex != null ? points[hoverIndex] : null;
-  const hoverCoord = hoverIndex != null ? coords[hoverIndex] : null;
+  const hoverCoord = hoverIndex != null ? data.coords[hoverIndex] : null;
+
+  const levels: { value: number; color: string; label: string; tone: "accent" | "up" | "down" }[] = [];
+  if (position) {
+    levels.push({
+      value: position.entryPrice,
+      color: COLOR_ENTRY,
+      label: "ENTRY",
+      tone: "accent",
+    });
+    if (position.takeProfit != null) {
+      levels.push({
+        value: position.takeProfit,
+        color: COLOR_UP,
+        label: "TP",
+        tone: "up",
+      });
+    }
+    if (position.stopLoss != null) {
+      levels.push({
+        value: position.stopLoss,
+        color: COLOR_DOWN,
+        label: "SL",
+        tone: "down",
+      });
+    }
+  }
 
   return (
     <div className="rounded-xl border border-jay-border bg-jay-panel p-3">
@@ -97,53 +156,153 @@ export function PriceChart({ points, label }: Props) {
             className={positive ? "text-jay-up" : "text-jay-down"}
             aria-label="window change"
           >
-            {formatPercent(change)}
+            {formatPercent(data.change)}
           </span>
         )}
       </div>
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
-        preserveAspectRatio="none"
-        className="h-32 w-full touch-none lg:h-80"
-        role="img"
-        aria-label="JayCoin price chart"
-        onPointerMove={handleMove}
-        onPointerDown={handleMove}
-        onPointerLeave={handleLeave}
-        onPointerCancel={handleLeave}
-      >
-        <path
-          d={path}
-          fill="none"
-          stroke={stroke}
-          strokeWidth={2}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          vectorEffect="non-scaling-stroke"
-        />
-        {hoverCoord && (
-          <line
-            x1={hoverCoord.x}
-            x2={hoverCoord.x}
-            y1={0}
-            y2={VIEW_HEIGHT}
-            stroke="#94a3b8"
-            strokeWidth={1}
-            strokeDasharray="3 3"
-            vectorEffect="non-scaling-stroke"
-          />
+      <div className="relative">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
+          preserveAspectRatio="none"
+          className="h-32 w-full touch-none lg:h-80"
+          role="img"
+          aria-label="JayCoin price chart"
+          onPointerMove={handleMove}
+          onPointerDown={handleMove}
+          onPointerLeave={handleLeave}
+          onPointerCancel={handleLeave}
+        >
+          {levels.map((lvl) => {
+            const y = data.priceToY(lvl.value);
+            return (
+              <line
+                key={lvl.label}
+                x1={0}
+                x2={VIEW_WIDTH}
+                y1={y}
+                y2={y}
+                stroke={lvl.color}
+                strokeWidth={1}
+                strokeDasharray="4 3"
+                strokeOpacity={0.8}
+                vectorEffect="non-scaling-stroke"
+              />
+            );
+          })}
+
+          {position ? (
+            <>
+              <path
+                d={data.belowPath}
+                fill="none"
+                stroke={COLOR_DOWN}
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+              />
+              <path
+                d={data.abovePath}
+                fill="none"
+                stroke={COLOR_UP}
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </>
+          ) : (
+            <path
+              d={data.overallPath}
+              fill="none"
+              stroke={fallbackStroke}
+              strokeWidth={2}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+
+          {hoverCoord && (
+            <line
+              x1={hoverCoord.x}
+              x2={hoverCoord.x}
+              y1={0}
+              y2={VIEW_HEIGHT}
+              stroke="#94a3b8"
+              strokeWidth={1}
+              strokeDasharray="3 3"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+        </svg>
+
+        {levels.length > 0 && (
+          <div className="pointer-events-none absolute inset-0">
+            {levels.map((lvl) => {
+              const yPct = (data.priceToY(lvl.value) / VIEW_HEIGHT) * 100;
+              const toneClass =
+                lvl.tone === "accent"
+                  ? "bg-jay-accent text-jay-bg"
+                  : lvl.tone === "up"
+                    ? "bg-jay-up text-slate-900"
+                    : "bg-jay-down text-white";
+              return (
+                <span
+                  key={lvl.label}
+                  className={`absolute right-1 -translate-y-1/2 rounded px-1.5 py-px font-mono text-[10px] font-semibold ${toneClass}`}
+                  style={{ top: `${yPct}%` }}
+                >
+                  {lvl.label} {formatPrice(lvl.value)}
+                </span>
+              );
+            })}
+          </div>
         )}
-      </svg>
+      </div>
       <div className="mt-1 flex justify-between text-[10px] text-slate-500">
-        <span>{fromLabel}</span>
+        <span>{data.fromLabel}</span>
         <span>
-          low {formatPrice(min)} · high {formatPrice(max)}
+          low {formatPrice(data.min)} · high {formatPrice(data.max)}
         </span>
-        <span>{toLabel}</span>
+        <span>{data.toLabel}</span>
       </div>
     </div>
   );
+}
+
+function splitOnBaseline(
+  coords: Coord[],
+  baselineY: number,
+): { above: Coord[][]; below: Coord[][] } {
+  const above: Coord[][] = [];
+  const below: Coord[][] = [];
+  for (let i = 0; i < coords.length - 1; i++) {
+    const a = coords[i]!;
+    const b = coords[i + 1]!;
+    const aAbove = a.y <= baselineY;
+    const bAbove = b.y <= baselineY;
+    if (aAbove === bAbove) {
+      (aAbove ? above : below).push([a, b]);
+      continue;
+    }
+    const dy = b.y - a.y;
+    const t = dy === 0 ? 0 : (baselineY - a.y) / dy;
+    const cross: Coord = { x: a.x + (b.x - a.x) * t, y: baselineY };
+    (aAbove ? above : below).push([a, cross]);
+    (aAbove ? below : above).push([cross, b]);
+  }
+  return { above, below };
+}
+
+function segmentsToPath(segments: Coord[][]): string {
+  return segments
+    .map(
+      ([a, b]) =>
+        `M${a!.x.toFixed(1)},${a!.y.toFixed(1)} L${b!.x.toFixed(1)},${b!.y.toFixed(1)}`,
+    )
+    .join(" ");
 }
 
 function formatEdgeTime(timestampMs: number): string {
