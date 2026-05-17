@@ -1,4 +1,4 @@
-# JayBile
+# JayCoin
 
 A mobile web app that simulates a simplified crypto trading market for **JayCoin (JAY)**. Users
 land on the site, get auto-authenticated (created on first visit), and can buy/sell at a live
@@ -91,8 +91,8 @@ by integration" if you try `enablement: true`).
 
 After that, push to `main`. The workflow in `.github/workflows/deploy.yml`
 runs tests, builds, and publishes `dist/` to Pages. The site URL will be
-`https://<user>.github.io/JayBile/` — `vite.config.ts` already sets
-`base: "/JayBile/"` to match.
+`https://<user>.github.io/JayCoin/` — `vite.config.ts` already sets
+`base: "/JayCoin/"` to match.
 
 If you rename the repo, update `base` in `vite.config.ts` accordingly.
 
