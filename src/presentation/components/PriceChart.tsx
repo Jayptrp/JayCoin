@@ -123,27 +123,16 @@ export function PriceChart({ points, label }: Props) {
           vectorEffect="non-scaling-stroke"
         />
         {hoverCoord && (
-          <>
-            <line
-              x1={hoverCoord.x}
-              x2={hoverCoord.x}
-              y1={0}
-              y2={VIEW_HEIGHT}
-              stroke="#94a3b8"
-              strokeWidth={1}
-              strokeDasharray="3 3"
-              vectorEffect="non-scaling-stroke"
-            />
-            <circle
-              cx={hoverCoord.x}
-              cy={hoverCoord.y}
-              r={3}
-              fill={stroke}
-              stroke="#0f172a"
-              strokeWidth={1}
-              vectorEffect="non-scaling-stroke"
-            />
-          </>
+          <line
+            x1={hoverCoord.x}
+            x2={hoverCoord.x}
+            y1={0}
+            y2={VIEW_HEIGHT}
+            stroke="#94a3b8"
+            strokeWidth={1}
+            strokeDasharray="3 3"
+            vectorEffect="non-scaling-stroke"
+          />
         )}
       </svg>
       <div className="mt-1 flex justify-between text-[10px] text-slate-500">
