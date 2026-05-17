@@ -110,7 +110,8 @@ src/
 ## Confirmed user preferences
 - Wants a **Close Position** action in the position panel (not just via the trade form). The MVP added a "Close Position" button that sells the full holding at the current price.
 - SL/TP should be **read-only until a pen icon is clicked**. No popup/modal; in-place edit with Save/Cancel.
-- Wants **mouse-hover on the chart to show the price + time at that point** within the selected timeframe.
+- Wants **mouse-hover on the chart to show the price + time at that point** within the selected timeframe. Implemented as a vertical dashed crosshair + price/time in the header (no dot, which distorts on desktop due to stretching).
+- Wants layout **responsive for desktop**: single column on mobile, two-column grid at lg+ (1024px+) with chart/ticker/history on left, trade form/position panel as sidebar on right.
 - Wants this skill file kept up to date as new facts are learned.
 
 ## How to update this file
