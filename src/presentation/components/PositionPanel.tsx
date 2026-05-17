@@ -19,7 +19,8 @@ interface Props {
 }
 
 export function PositionPanel({ user, wallet, orders, price, onUpdated }: Props) {
-  const { setOrders } = useContainer();
+  const { setOrders, sell } = useContainer();
+  const [editing, setEditing] = useState(false);
   const [sl, setSl] = useState<string>("");
   const [tp, setTp] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +28,7 @@ export function PositionPanel({ user, wallet, orders, price, onUpdated }: Props)
   useEffect(() => {
     setSl(orders.stopLoss != null ? String(orders.stopLoss) : "");
     setTp(orders.takeProfit != null ? String(orders.takeProfit) : "");
+    setEditing(false);
   }, [orders.stopLoss, orders.takeProfit]);
 
   const hasPosition = wallet.coins > 0;
@@ -44,6 +46,7 @@ export function PositionPanel({ user, wallet, orders, price, onUpdated }: Props)
         stopLoss: parsedSl,
         takeProfit: parsedTp,
       });
+      setEditing(false);
       onUpdated();
     } catch (err) {
       if (err instanceof DomainError) setError(err.message);
@@ -51,13 +54,27 @@ export function PositionPanel({ user, wallet, orders, price, onUpdated }: Props)
     }
   }
 
-  function clear() {
+  function cancel() {
     setError(null);
+    setSl(orders.stopLoss != null ? String(orders.stopLoss) : "");
+    setTp(orders.takeProfit != null ? String(orders.takeProfit) : "");
+    setEditing(false);
+  }
+
+  function closePosition() {
+    setError(null);
+    if (!hasPosition) return;
     try {
-      setOrders.execute({ userId: user.id, stopLoss: null, takeProfit: null });
+      sell.execute({
+        userId: user.id,
+        coinAmount: wallet.coins,
+        price,
+        reason: "MANUAL",
+      });
       onUpdated();
     } catch (err) {
       if (err instanceof DomainError) setError(err.message);
+      else setError("Could not close position.");
     }
   }
 
@@ -90,32 +107,60 @@ export function PositionPanel({ user, wallet, orders, price, onUpdated }: Props)
         </p>
       )}
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-4 flex items-center justify-between">
+        <span className="text-xs uppercase tracking-wider text-slate-400">
+          Orders
+        </span>
+        {hasPosition && !editing && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            aria-label="edit stop loss and take profit"
+            title="Edit"
+            className="rounded-md border border-jay-border bg-jay-bg p-1.5 text-slate-300 hover:text-jay-accent active:opacity-80"
+          >
+            <PencilIcon />
+          </button>
+        )}
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs uppercase tracking-wider text-slate-400">
+          <label className="block text-xs uppercase tracking-wider text-slate-500">
             Stop loss
           </label>
-          <input
-            value={sl}
-            onChange={(event) => setSl(event.target.value)}
-            inputMode="decimal"
-            placeholder="—"
-            disabled={!hasPosition}
-            className="mt-1 w-full rounded-lg border border-jay-border bg-jay-bg px-3 py-2 font-mono outline-none focus:border-jay-accent disabled:opacity-50"
-          />
+          {editing ? (
+            <input
+              value={sl}
+              onChange={(event) => setSl(event.target.value)}
+              inputMode="decimal"
+              placeholder="—"
+              autoFocus
+              className="mt-1 w-full rounded-lg border border-jay-border bg-jay-bg px-3 py-2 font-mono outline-none focus:border-jay-accent"
+            />
+          ) : (
+            <div className="mt-1 w-full rounded-lg border border-jay-border bg-jay-bg px-3 py-2 font-mono text-slate-300">
+              {orders.stopLoss != null ? formatPrice(orders.stopLoss) : "—"}
+            </div>
+          )}
         </div>
         <div>
-          <label className="block text-xs uppercase tracking-wider text-slate-400">
+          <label className="block text-xs uppercase tracking-wider text-slate-500">
             Take profit
           </label>
-          <input
-            value={tp}
-            onChange={(event) => setTp(event.target.value)}
-            inputMode="decimal"
-            placeholder="—"
-            disabled={!hasPosition}
-            className="mt-1 w-full rounded-lg border border-jay-border bg-jay-bg px-3 py-2 font-mono outline-none focus:border-jay-accent disabled:opacity-50"
-          />
+          {editing ? (
+            <input
+              value={tp}
+              onChange={(event) => setTp(event.target.value)}
+              inputMode="decimal"
+              placeholder="—"
+              className="mt-1 w-full rounded-lg border border-jay-border bg-jay-bg px-3 py-2 font-mono outline-none focus:border-jay-accent"
+            />
+          ) : (
+            <div className="mt-1 w-full rounded-lg border border-jay-border bg-jay-bg px-3 py-2 font-mono text-slate-300">
+              {orders.takeProfit != null ? formatPrice(orders.takeProfit) : "—"}
+            </div>
+          )}
         </div>
       </div>
 
@@ -125,25 +170,54 @@ export function PositionPanel({ user, wallet, orders, price, onUpdated }: Props)
         </div>
       )}
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      {editing && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={save}
+            className="rounded-lg bg-jay-accent py-2 font-semibold text-jay-bg"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={cancel}
+            className="rounded-lg border border-jay-border py-2 text-sm text-slate-300"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {hasPosition && !editing && (
         <button
           type="button"
-          onClick={save}
-          disabled={!hasPosition}
-          className="rounded-lg bg-jay-accent py-2 font-semibold text-jay-bg disabled:opacity-40"
+          onClick={closePosition}
+          className="mt-3 w-full rounded-lg border border-jay-down/60 bg-jay-down/10 py-2 text-sm font-semibold text-jay-down hover:bg-jay-down/20 active:opacity-80"
         >
-          Save
+          Close position @ {formatPrice(price)}
         </button>
-        <button
-          type="button"
-          onClick={clear}
-          disabled={!hasPosition}
-          className="rounded-lg border border-jay-border py-2 text-sm text-slate-300 disabled:opacity-40"
-        >
-          Clear
-        </button>
-      </div>
+      )}
     </div>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M11.5 1.5l3 3-9 9H2.5v-3l9-9z" />
+      <path d="M9.5 3.5l3 3" />
+    </svg>
   );
 }
 
