@@ -84,11 +84,15 @@ npm run build    # production build into dist/
 
 ## Deploying to GitHub Pages
 
-1. Repo Settings → Pages → Source: **GitHub Actions**.
-2. Push to `main`. The workflow in `.github/workflows/deploy.yml` runs tests,
-   builds, and publishes `dist/` to Pages.
-3. The site URL will be `https://<user>.github.io/JayBile/` — `vite.config.ts`
-   already sets `base: "/JayBile/"` to match.
+**One-time setup:** Repo Settings → Pages → Source: **GitHub Actions**. This
+step must be done by hand once — the workflow's default `GITHUB_TOKEN`
+cannot create the Pages site itself (GitHub returns "Resource not accessible
+by integration" if you try `enablement: true`).
+
+After that, push to `main`. The workflow in `.github/workflows/deploy.yml`
+runs tests, builds, and publishes `dist/` to Pages. The site URL will be
+`https://<user>.github.io/JayBile/` — `vite.config.ts` already sets
+`base: "/JayBile/"` to match.
 
 If you rename the repo, update `base` in `vite.config.ts` accordingly.
 
